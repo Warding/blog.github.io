@@ -1,106 +1,230 @@
-/**
- * Sets up Justified Gallery.
- */
-if (!!$.prototype.justifiedGallery) {
-  var options = {
-    rowHeight: 140,
-    margins: 4,
-    lastRow: 'justify'
-  };
-  $('.article-gallery').justifiedGallery(options);
-}
-
-
-$(document).ready(function() {
-
-  /**
-   * Shows the responsive navigation menu on mobile.
-   */
-  $("#header > #nav > ul > .icon").click(function() {
-    $("#header > #nav > ul").toggleClass("responsive");
-  });
-
-
-  /**
-   * Controls the different versions of  the menu in blog post articles 
-   * for Desktop, tablet and mobile.
-   */
-  if ($(".post").length) {
-    /**
-     * Display the menu if the menu icon is clicked.
-     */
-    var menu = $("#menu");
-    var menu_icon = $("#menu-icon, #menu-icon-tablet");
-    menu_icon.click(function() {
-      if (menu.css('visibility') === 'hidden') {
-        menu.css("visibility", "visible");
-        menu_icon.addClass('active');
-      } else {
-        menu.css("visibility", "hidden");
-        menu_icon.removeClass('active');
-      }
-      return false;
+/*! echo-js v1.7.3 | (c) 2016 @toddmotto | https://github.com/toddmotto/echo */
+(function(root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    define(function() {
+      return factory(root);
     });
+  } else if (typeof exports === 'object') {
+    module.exports = factory;
+  } else {
+    root.echo = factory(root);
+  }
+})(this, function(root) {
 
-    /**
-     * Add a scroll listener to the menu to hide/show the navigation links.
-     */
-    if (menu.length) {
-      $(window).on('scroll', function() {
-        var topDistance = $("#menu > #nav").offset().top;
+  'use strict';
 
-        // hide only the navigation links on desktop
-        if (menu.css('visibility') !== 'hidden' && topDistance < 50) {
-          $("#menu > #nav").show();
-        } else if (menu.css('visibility') !== 'hidden' && topDistance > 100) {
-          $("#menu > #nav").hide();
-        }
+  var echo = {};
 
-        // on tablet, hide the navigation icon as well and show a "scroll to top
-        // icon" instead
-        if ( ! $( "#menu-icon" ).is(":visible") && topDistance < 50 ) {
-          $("#menu-icon-tablet").show();
-          $("#top-icon-tablet").hide();
-        } else if (! $( "#menu-icon" ).is(":visible") && topDistance > 100) {
-          $("#menu-icon-tablet").hide();
-          $("#top-icon-tablet").show();
-        }
-      });
+  var callback = function() {};
+
+  var offset, poll, delay, useDebounce, unload;
+
+  var isHidden = function(element) {
+    return (element.offsetParent === null);
+  };
+
+  var inView = function(element, view) {
+    if (isHidden(element)) {
+      return false;
     }
 
-    /**
-     * Show mobile navigation menu after scrolling upwards,
-     * hide it again after scrolling downwards.
-     */
-    if ($( "#footer-post").length) {
-      var lastScrollTop = 0;
-      $(window).on('scroll', function() {
-        var topDistance = $(window).scrollTop();
+    var box = element.getBoundingClientRect();
+    return (box.right >= view.l && box.bottom >= view.t && box.left <= view.r && box.top <= view.b);
+  };
 
-        if (topDistance > lastScrollTop){
-          // downscroll -> show menu
-          $("#footer-post").hide();
+  var debounceOrThrottle = function() {
+    if (!useDebounce && !!poll) {
+      return;
+    }
+    clearTimeout(poll);
+    poll = setTimeout(function() {
+      echo.render();
+      poll = null;
+    }, delay);
+  };
+
+  echo.init = function(opts) {
+    opts = opts || {};
+    var offsetAll = opts.offset || 0;
+    var offsetVertical = opts.offsetVertical || offsetAll;
+    var offsetHorizontal = opts.offsetHorizontal || offsetAll;
+    var optionToInt = function(opt, fallback) {
+      return parseInt(opt || fallback, 10);
+    };
+    offset = {
+      t: optionToInt(opts.offsetTop, offsetVertical),
+      b: optionToInt(opts.offsetBottom, offsetVertical),
+      l: optionToInt(opts.offsetLeft, offsetHorizontal),
+      r: optionToInt(opts.offsetRight, offsetHorizontal)
+    };
+    delay = optionToInt(opts.throttle, 250);
+    useDebounce = opts.debounce !== false;
+    unload = !!opts.unload;
+    callback = opts.callback || callback;
+    echo.render();
+    if (document.addEventListener) {
+      root.addEventListener('scroll', debounceOrThrottle, false);
+      root.addEventListener('load', debounceOrThrottle, false);
+    } else {
+      root.attachEvent('onscroll', debounceOrThrottle);
+      root.attachEvent('onload', debounceOrThrottle);
+    }
+  };
+
+  echo.render = function() {
+    var nodes = document.querySelectorAll('img[data-echo], [data-echo-background]');
+    var length = nodes.length;
+    var src, elem;
+    var view = {
+      l: 0 - offset.l,
+      t: 0 - offset.t,
+      b: (root.innerHeight || document.documentElement.clientHeight) + offset.b,
+      r: (root.innerWidth || document.documentElement.clientWidth) + offset.r
+    };
+    for (var i = 0; i < length; i++) {
+      elem = nodes[i];
+      if (inView(elem, view)) {
+
+        if (unload) {
+          elem.setAttribute('data-echo-placeholder', elem.src);
+        }
+
+        if (elem.getAttribute('data-echo-background') !== null) {
+          elem.style.backgroundImage = "url(" + elem.getAttribute('data-echo-background') + ")";
         } else {
-          // upscroll -> hide menu
-          $("#footer-post").show();
+          elem.src = elem.getAttribute('data-echo');
         }
-        lastScrollTop = topDistance;
 
-        // close all submenu's on scroll
-        $("#nav-footer").hide();
-        $("#toc-footer").hide();
-        $("#share-footer").hide();
-
-        // show a "navigation" icon when close to the top of the page, 
-        // otherwise show a "scroll to the top" icon
-        if (topDistance < 50) {
-          $("#actions-footer > ul > #top").hide();
-          $("#actions-footer > ul > #menu").show();
-        } else if (topDistance > 100) {
-          $("#actions-footer > ul > #menu").hide();
-          $("#actions-footer > ul > #top").show();
+        if (!unload) {
+          elem.removeAttribute('data-echo');
+          elem.removeAttribute('data-echo-background');
         }
-      });
+
+        callback(elem, 'load');
+      } else if (unload && !!(src = elem.getAttribute('data-echo-placeholder'))) {
+
+        if (elem.getAttribute('data-echo-background') !== null) {
+          elem.style.backgroundImage = "url(" + src + ")";
+        } else {
+          elem.src = src;
+        }
+
+        elem.removeAttribute('data-echo-placeholder');
+        callback(elem, 'unload');
+      }
+    }
+    if (!length) {
+      echo.detach();
+    }
+  };
+
+  echo.detach = function() {
+    if (document.removeEventListener) {
+      root.removeEventListener('scroll', debounceOrThrottle);
+    } else {
+      root.detachEvent('onscroll', debounceOrThrottle);
+    }
+    clearTimeout(poll);
+  };
+
+  return echo;
+
+});
+function deepCopy(c, p) {
+　var c = c || {};
+　for (var i in p) {
+　　if (typeof p[i] === 'object') {
+　　　c[i] = (p[i].constructor === Array) ? [] : {};
+　　　deepCopy(p[i], c[i]);
+　　} else {
+　　　c[i] = p[i];
+　　}
+　}
+　return c;
+}
+/**
+ * 网站js
+ * @author Jelon
+ * @type {{init, toggleMenu}}
+ */
+var JELON = window.JELON || {};
+JELON = deepCopy(JELON, {
+  name: 'JELON',
+  version: '0.0.2',
+  init: function() {
+    this.toggleMenu();
+    this.backToTop();
+
+    echo.init({
+      offset: 50,
+      throttle: 250,
+      unload: false,
+      callback: function(element, op) {
+        console.log(element, 'has been', op + 'ed')
+      }
+    });
+    this.initSearch();
+  },
+  $: function(str) {
+    return /^(\[object HTML)[a-zA-Z]*(Element\])$/.test(Object.prototype.toString.call(str)) ? str : document.getElementById(str);
+  },
+  toggleMenu: function() {
+    var _this = this,
+      $menu = _this.$(_this.name + '__menu');
+    _this.$(_this.name + '__btnDropNav').onclick = function() {
+      if ($menu.className.indexOf('hidden') === -1) {
+        $menu.className += ' hidden';
+      } else {
+        $menu.className = $menu.className.replace(/\s*hidden\s*/, '');
+      }
+
+    };
+  },
+  backToTop: function() {
+    var _this = this;
+    if (typeof _this.$(_this.name + '__backToTop') === 'undefined') return;
+    window.onscroll = window.onresize = function() {
+      if (document.documentElement.scrollTop + document.body.scrollTop > 0) {
+        _this.$(_this.name + '__backToTop').style.display = 'block';
+      } else {
+        _this.$(_this.name + '__backToTop').style.display = 'none';
+      }
+    };
+    _this.$(_this.name + '__backToTop').onclick = function() {
+      var Timer = setInterval(GoTop, 10);
+
+      function GoTop() {
+        if (document.documentElement.scrollTop + document.body.scrollTop < 1) {
+          clearInterval(Timer)
+        } else {
+          document.documentElement.scrollTop /= 1.1;
+          document.body.scrollTop /= 1.1
+        }
+      }
+    };
+  },
+  initSearch: function () {
+    var _this = this;
+    if (document.getElementById('searchKeyword') && document.getElementById('searchButton')) {
+      document.getElementById('searchKeyword').onkeyup = function (e) {
+        var e = e || window.event
+        var keyCode = e.keyCode || e.which
+        if (keyCode === 13) {
+          _this.startSearch();
+        }
+      }
+      document.getElementById('searchButton').onclick = _this.startSearch;
+    }
+  },
+  startSearch: function () {
+    if (document.getElementById('searchKeyword').value) {
+      document.getElementById('searchKeywordHidden').value = 'site:jelon.info ' + document.getElementById('searchKeyword').value;
+      document.getElementById('searchForm').submit();
     }
   }
 });
+
+/**
+ * 程序入口
+ */
+JELON.init();
