@@ -21,7 +21,7 @@ self.addEventListener('active', function () {
 });
 
 var precacheUrls = [
-'/','/posts/undefined/','/posts/undefined/','/posts/undefined/',
+'/blog.github.io/','/blog.github.io/posts/37146/','/blog.github.io/posts/undefined/','/blog.github.io/posts/16107/',
 ];
 toolbox.precache(precacheUrls);
 toolbox.options = {"networkTimeoutSeconds":5};
